@@ -21,10 +21,15 @@ COPY . .
 # Make start script executable (before switching user)
 RUN chmod +x start-caprover.sh
 
-# Create non-root user
-RUN groupadd -r nodeuser && useradd -r -g nodeuser nodeuser
+# Create non-root user with proper shell
+RUN groupadd -r nodeuser && useradd -r -g nodeuser -s /bin/bash nodeuser
 RUN chown -R nodeuser:nodeuser /app
+
+# Switch to non-root user
 USER nodeuser
+
+# Verify setup
+RUN whoami && pwd && ls -la start-caprover.sh
 
 # Expose port (CapRover will map this to 80)
 EXPOSE 3000

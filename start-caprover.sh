@@ -65,4 +65,17 @@ pool.query('SELECT version()')
 echo "[caprover] Database connection test finished."
 
 echo "[caprover] Launching application on port ${PORT}..."
+echo "[caprover] Process ID: $$"
+echo "[caprover] Current directory: $(pwd)"
+echo "[caprover] Node.js version: $(node --version)"
+echo "[caprover] NPM version: $(npm --version)"
+
+# Check if index.js exists
+if [ ! -f "index.js" ]; then
+    echo "[caprover] ERROR: index.js not found!"
+    ls -la
+    exit 1
+fi
+
+echo "[caprover] Starting Node.js application..."
 exec node index.js

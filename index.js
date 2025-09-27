@@ -120,8 +120,75 @@ app.use("*", (req, res) => {
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-server.listen(PORT, () => {
-  console.log("🚀 Server running on port", PORT);
-  console.log("📡 Socket.IO server ready for connections");
-  console.log("🌍 Environment:", NODE_ENV);
+// Initialize database first
+const db = require("./src/config/database");
+
+// Graceful startup
+const startServer = async () => {
+  try {
+    console.log("🔄 Initializing server...");
+    console.log("🌍 Environment:", NODE_ENV);
+    console.log("🔗 Port:", PORT);
+    console.log("💾 Database URL:", process.env.DATABASE_URL ? "SET" : "NOT SET");
+    
+    // Start HTTP server
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log("🚀 Server running on port", PORT);
+      console.log("📡 Socket.IO server ready for connections");
+      console.log("✅ Server started successfully!");
+      
+      // Test internal endpoint
+      const http = require('http');
+      const options = {
+        hostname: 'localhost',
+        port: PORT,
+        path: '/health',
+        method: 'GET',
+        timeout: 2000
+      };
+      
+      const req = http.request(options, (res) => {
+        console.log("🏥 Health check passed - status:", res.statusCode);
+      });
+      
+      req.on('error', (err) => {
+        console.log("⚠️ Health check failed:", err.message);
+      });
+      
+      req.end();
+    });
+
+    // Handle server errors
+    server.on('error', (err) => {
+      console.error("❌ Server error:", err);
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use`);
+        process.exit(1);
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
 });
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Server closed');
+    process.exit(0);
+  });
+});
+
+// Start the server
+startServer();
