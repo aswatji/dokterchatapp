@@ -5,7 +5,12 @@ echo "[caprover] Starting Chat Server..."
 
 # Ensure production settings for CapRover container
 export NODE_ENV=production
-export PORT="${PORT:-80}"
+export PORT="${PORT:-3000}"
+
+# Debug information
+echo "[caprover] Environment Variables:"
+echo "[caprover] NODE_ENV: $NODE_ENV"
+echo "[caprover] PORT: $PORT"
 
 mask_url() {
   local url="$1"
@@ -34,30 +39,30 @@ fi
 echo "[caprover] Sanitized DATABASE_URL => $(mask_url "${DATABASE_URL}")"
 
 echo "[caprover] Testing database connectivity..."
-node <<'NODE'
+
+# Test database connection with timeout
+timeout 10s node -e "
 const { Pool } = require('pg');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: false,
+  connectionTimeoutMillis: 5000,
+});
 
-(async () => {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: false,
-  });
-
-  try {
-    const result = await pool.query('SELECT NOW() as current_time, version() as pg_version');
+pool.query('SELECT version()')
+  .then(res => {
     console.log('[caprover] Database connection successful');
-    console.log('[caprover] Time:', result.rows[0].current_time);
-    console.log('[caprover] PostgreSQL Version:', result.rows[0].pg_version.split(' ')[0]);
-  } catch (error) {
-    console.error('[caprover] Database connection failed:', error.message);
-    process.exit(1);
-  } finally {
-    await pool.end();
-  }
-})();
-NODE
+    console.log('[caprover] PostgreSQL Version:', res.rows[0].version.split(' ')[0], res.rows[0].version.split(' ')[1]);
+    process.exit(0);
+  })
+  .catch(err => {
+    console.log('[caprover] Database connection failed:', err.message);
+    console.log('[caprover] Will start server anyway...');
+    process.exit(0);
+  });
+" || echo "[caprover] Database test completed (with timeout)"
 
-echo "[caprover] Database connection verified."
+echo "[caprover] Database connection test finished."
 
 echo "[caprover] Launching application on port ${PORT}..."
 exec node index.js

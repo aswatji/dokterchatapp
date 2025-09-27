@@ -22,13 +22,55 @@ app.use(express.urlencoded({ extended: true }));
 const apiRoutes = require("./src/routes");
 app.use("/api", apiRoutes);
 
-// Health check
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    port: process.env.PORT,
+    nodeVersion: process.version,
+    uptime: Math.floor(process.uptime()),
+    environment: process.env.NODE_ENV || "development"
+  });
+});
+
+// Debug endpoint for CapRover troubleshooting
+app.get("/debug", (req, res) => {
+  res.json({
+    message: "Debug Information",
+    server: {
+      port: process.env.PORT,
+      nodeEnv: process.env.NODE_ENV,
+      processId: process.pid,
+      uptime: Math.floor(process.uptime()),
+      platform: process.platform,
+      nodeVersion: process.version
+    },
+    database: {
+      hasUrl: !!process.env.DATABASE_URL,
+      postgresHost: process.env.POSTGRES_HOST,
+      postgresUser: process.env.POSTGRES_USER,
+      postgresDb: process.env.POSTGRES_DB
+    },
+    headers: req.headers,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Root endpoint
 app.get("/", (req, res) => {
   res.json({
     message: "Chat Server with UUID Schema is running! 🚀",
     version: "2.0.0",
     schema: "UUID-based for better scalability",
     status: "healthy",
+    endpoints: {
+      health: "/health",
+      debug: "/debug",
+      api: "/api",
+      users: "/api/users",
+      chats_v2: "/api/v2/chats"
+    }
   });
 });
 

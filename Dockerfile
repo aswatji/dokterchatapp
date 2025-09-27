@@ -26,12 +26,12 @@ RUN groupadd -r nodeuser && useradd -r -g nodeuser nodeuser
 RUN chown -R nodeuser:nodeuser /app
 USER nodeuser
 
-# Expose port
-EXPOSE 80
+# Expose port (CapRover will map this to 80)
+EXPOSE 3000
 
-# Health check
+# Health check on correct port
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:80/ || exit 1
+  CMD curl -f http://localhost:3000/health || exit 1
 
 # Start application (CapRover aware script)
 CMD ["./start-caprover.sh"]
