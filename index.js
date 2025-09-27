@@ -1,0 +1,81 @@
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const cors = require('cors');
+require('dotenv').config();
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+const apiRoutes = require('./src/routes');
+app.use('/api', apiRoutes);
+
+// Health check
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Chat Server is running!',
+    version: '1.0.0',
+    status: 'healthy'
+  });
+});
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('👤 User connected:', socket.id);
+
+  // Join chat room
+  socket.on('join_chat', (chatId) => {
+    socket.join(`chat_${chatId}`);
+    console.log(`👤 User ${socket.id} joined chat ${chatId}`);
+  });
+
+  // Handle new message
+  socket.on('send_message', (data) => {
+    console.log('📨 New message:', data);
+    // Broadcast to all users in the chat room
+    socket.to(`chat_${data.chatId}`).emit('new_message', data);
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('👤 User disconnected:', socket.id);
+  });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('❌ Error:', err.stack);
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    message: 'The requested endpoint does not exist'
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+server.listen(PORT, () => {
+  console.log('🚀 Server running on port', PORT);
+  console.log('📡 Socket.IO server ready for connections');
+  console.log('🌍 Environment:', NODE_ENV);
+});
