@@ -1,61 +1,63 @@
 #!/bin/bash
+set -euo pipefail
 
-echo "🚀 Starting Chat Server for CapRover deployment..."
+echo "[caprover] Starting Chat Server..."
 
-# Set production environment
+# Ensure production settings for CapRover container
 export NODE_ENV=production
-export PORT=80
+export PORT="${PORT:-80}"
 
-# Debug environment variables (safely)
-echo "📋 Environment Check:"
-echo "NODE_ENV: $NODE_ENV"
-echo "PORT: $PORT"
-echo "Database configured: $([ -n "$DATABASE_URL" ] && echo "YES" || echo "NO")"
+mask_url() {
+  local url="$1"
+  echo "${url}" | sed 's#://[^:]*:\([^@]*\)@#://*****:*****@#'
+}
 
-# If no DATABASE_URL is set, try to construct from CapRover services
-if [ -z "$DATABASE_URL" ]; then
-    echo "⚠️ DATABASE_URL not found, checking CapRover database service..."
-    if [ -n "$POSTGRES_PASSWORD" ] && [ -n "$POSTGRES_DB" ]; then
-        export DATABASE_URL="postgresql://postgres:$POSTGRES_PASSWORD@srv-captain--dokterchat:5432/$POSTGRES_DB"
-        echo "✅ Using CapRover internal database connection"
-    else
-        echo "❌ No database configuration found!"
-        exit 1
-    fi
-fi
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "[caprover] DATABASE_URL not provided. Attempting to construct it from POSTGRES_* variables."
 
-# Test database connection
-echo "🔍 Testing database connection..."
-node -e "
-const { Pool } = require('pg');
-const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL, 
-  ssl: false 
-});
-
-pool.query('SELECT NOW() as current_time, version() as pg_version')
-  .then(result => {
-    console.log('✅ Database connection successful');
-    console.log('Time:', result.rows[0].current_time);
-    console.log('PostgreSQL Version:', result.rows[0].pg_version.split(' ')[1]);
-    process.exit(0);
-  })
-  .catch(err => {
-    console.error('❌ Database connection failed:', err.message);
-    process.exit(1);
-  });
-"
-
-if [ $? -ne 0 ]; then
-    echo "❌ Database connection test failed"
+  if [ -z "${POSTGRES_PASSWORD:-}" ]; then
+    echo "[caprover] ERROR: POSTGRES_PASSWORD is required when DATABASE_URL is not set."
     exit 1
+  fi
+
+  PGHOST="${POSTGRES_HOST:-${CAPROVER_POSTGRES_HOST:-srv-captain--dokterchat}}"
+  PGPORT="${POSTGRES_PORT:-5432}"
+  PGUSER="${POSTGRES_USER:-postgres}"
+  PGDATABASE="${POSTGRES_DB:-postgres}"
+
+  export DATABASE_URL="postgresql://${PGUSER}:${POSTGRES_PASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}"
+  echo "[caprover] Constructed DATABASE_URL using host ${PGHOST}:${PGPORT} and database ${PGDATABASE}."
+else
+  echo "[caprover] DATABASE_URL provided via environment."
 fi
 
-echo "✅ Database connection verified"
+echo "[caprover] Sanitized DATABASE_URL => $(mask_url "${DATABASE_URL}")"
 
-# Database tables will be automatically created by the application
-echo "🗄️ Database tables will be auto-created on startup"
+echo "[caprover] Testing database connectivity..."
+node <<'NODE'
+const { Pool } = require('pg');
 
-# Start the application
-echo "🎯 Starting Chat Server on port $PORT..."
+(async () => {
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: false,
+  });
+
+  try {
+    const result = await pool.query('SELECT NOW() as current_time, version() as pg_version');
+    console.log('[caprover] Database connection successful');
+    console.log('[caprover] Time:', result.rows[0].current_time);
+    console.log('[caprover] PostgreSQL Version:', result.rows[0].pg_version.split(' ')[0]);
+  } catch (error) {
+    console.error('[caprover] Database connection failed:', error.message);
+    process.exit(1);
+  } finally {
+    await pool.end();
+  }
+})();
+NODE
+
+echo "[caprover] Database connection verified."
+
+echo "[caprover] Launching application on port ${PORT}..."
 exec node index.js
