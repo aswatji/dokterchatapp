@@ -7,7 +7,7 @@ const userController = {
       console.log('🔍 Getting all users...');
       
       const result = await db.query(
-        'SELECT id, name, email, created_at FROM users ORDER BY created_at DESC'
+        'SELECT uid, name, email, created_at FROM users ORDER BY created_at DESC'
       );
       
       console.log(`✅ Found ${result.rows.length} users`);
@@ -55,11 +55,11 @@ const userController = {
       }
 
       const result = await db.query(
-        'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, name, email, created_at',
+        'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING uid, name, email, created_at',
         [name.trim(), email.toLowerCase().trim()]
       );
 
-      console.log(`✅ User created with ID: ${result.rows[0].id}`);
+      console.log(`✅ User created with UID: ${result.rows[0].uid}`);
       
       res.status(201).json({
         success: true,
@@ -94,7 +94,7 @@ const userController = {
       console.log(`🔍 Getting user ID: ${id}`);
 
       const result = await db.query(
-        'SELECT id, name, email, created_at FROM users WHERE id = $1',
+        'SELECT uid, name, email, created_at FROM users WHERE uid = $1',
         [id]
       );
 
@@ -168,7 +168,7 @@ const userController = {
 
       // Remove trailing comma and space
       query = query.slice(0, -2);
-      query += ` WHERE id = $${paramIndex} RETURNING id, name, email, created_at`;
+      query += ` WHERE uid = $${paramIndex} RETURNING uid, name, email, created_at`;
       params.push(id);
 
       const result = await db.query(query, params);
@@ -217,7 +217,7 @@ const userController = {
       console.log(`🔍 Deleting user ID: ${id}`);
 
       const result = await db.query(
-        'DELETE FROM users WHERE id = $1 RETURNING id, name, email',
+        'DELETE FROM users WHERE uid = $1 RETURNING uid, name, email',
         [id]
       );
 
