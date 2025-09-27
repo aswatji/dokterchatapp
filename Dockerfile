@@ -1,5 +1,5 @@
-# Use Node.js 18 LTS
-FROM node:18-slim
+# Use Node.js 20 LTS (compatible with all dependencies)
+FROM node:20-slim
 
 # Set working directory
 WORKDIR /app
@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (use --omit=dev instead of deprecated --only=production)
+RUN npm ci --omit=dev
 
 # Copy application code
 COPY . .

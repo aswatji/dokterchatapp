@@ -25,8 +25,9 @@ app.use('/api', apiRoutes);
 // Health check
 app.get('/', (req, res) => {
   res.json({
-    message: 'Chat Server is running!',
-    version: '1.0.0',
+    message: 'Chat Server with UUID Schema is running! 🚀',
+    version: '2.0.0',
+    schema: 'UUID-based for better scalability',
     status: 'healthy'
   });
 });

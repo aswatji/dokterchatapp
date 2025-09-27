@@ -18,58 +18,65 @@ pool.on('error', (err) => {
   console.error('❌ Database connection error:', err);
 });
 
-// Initialize database tables
+// Initialize database tables with UUID schema
 const initializeTables = async () => {
   try {
     console.log('🔄 Initializing database tables...');
 
-    // Users table
+    // Enable UUID extension
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
+    // Users table with UUID
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        uid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
       )
     `);
 
-    // Chats table
+    // Chats table with UUID (1-on-1 chat)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS chats (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255),
-        type VARCHAR(50) DEFAULT 'private',
-        created_by INTEGER REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        chat_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user1_id UUID REFERENCES users(uid) ON DELETE CASCADE,
+        user2_id UUID REFERENCES users(uid) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user1_id, user2_id)
       )
     `);
 
-    // Chat participants table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS chat_participants (
-        id SERIAL PRIMARY KEY,
-        chat_id INTEGER REFERENCES chats(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(chat_id, user_id)
-      )
-    `);
-
-    // Messages table
+    // Messages table with UUID
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        chat_id INTEGER REFERENCES chats(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        chat_id UUID REFERENCES chats(chat_id) ON DELETE CASCADE,
+        sent_by UUID REFERENCES users(uid) ON DELETE CASCADE,
         content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        sent_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Last messages table for quick access
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS last_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(uid) ON DELETE CASCADE,
+        partner_id UUID REFERENCES users(uid) ON DELETE CASCADE,
+        chat_id UUID REFERENCES chats(chat_id) ON DELETE CASCADE,
+        last_chat TEXT,
+        last_chat_date TIMESTAMP,
+        UNIQUE(user_id, partner_id)
       )
     `);
 
     // Create indexes for better performance
     await pool.query('CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_chat_participants_chat_id ON chat_participants(chat_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_messages_sent_at ON messages(sent_at)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_last_messages_user_id ON last_messages(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_chats_user1_id ON chats(user1_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_chats_user2_id ON chats(user2_id)');
     
     console.log('✅ Database tables initialized successfully');
   } catch (error) {
