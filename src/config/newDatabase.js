@@ -1,27 +1,30 @@
-const { Pool } = require('pg');
+const { Pool } = require("pg");
 
 // Database connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
 
 // Test connection on startup
-pool.on('connect', () => {
-  console.log('🗄️ Connected to PostgreSQL database');
+pool.on("connect", () => {
+  console.log("🗄️ Connected to PostgreSQL database");
 });
 
-pool.on('error', (err) => {
-  console.error('❌ Database connection error:', err);
+pool.on("error", (err) => {
+  console.error("❌ Database connection error:", err);
 });
 
 // Initialize database tables with UUID schema
 const initializeTables = async () => {
   try {
-    console.log('🔄 Initializing database tables...');
+    console.log("🔄 Initializing database tables...");
 
     // Enable UUID extension
     await pool.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
@@ -72,11 +75,21 @@ const initializeTables = async () => {
     `);
 
     // Create indexes for better performance
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_sent_at ON messages(sent_at)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_last_messages_user_id ON last_messages(user_id)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_chats_user1_id ON chats(user1_id)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_chats_user2_id ON chats(user2_id)`);
+    await pool.query(
+      `CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)`
+    );
+    await pool.query(
+      `CREATE INDEX IF NOT EXISTS idx_messages_sent_at ON messages(sent_at)`
+    );
+    await pool.query(
+      `CREATE INDEX IF NOT EXISTS idx_last_messages_user_id ON last_messages(user_id)`
+    );
+    await pool.query(
+      `CREATE INDEX IF NOT EXISTS idx_chats_user1_id ON chats(user1_id)`
+    );
+    await pool.query(
+      `CREATE INDEX IF NOT EXISTS idx_chats_user2_id ON chats(user2_id)`
+    );
 
     // Also create legacy tables for backward compatibility (v1)
     await pool.query(`
@@ -118,13 +131,14 @@ const initializeTables = async () => {
       )
     `);
 
-    console.log('✅ Database tables initialized successfully');
-    console.log('📊 Available schemas:');
-    console.log('   - UUID Schema (v2): users, chats, messages, last_messages');
-    console.log('   - Legacy Schema (v1): old_users, old_chats, old_chat_participants, old_messages');
-    
+    console.log("✅ Database tables initialized successfully");
+    console.log("📊 Available schemas:");
+    console.log("   - UUID Schema (v2): users, chats, messages, last_messages");
+    console.log(
+      "   - Legacy Schema (v1): old_users, old_chats, old_chat_participants, old_messages"
+    );
   } catch (error) {
-    console.error('❌ Error initializing database tables:', error.message);
+    console.error("❌ Error initializing database tables:", error.message);
     throw error;
   }
 };
@@ -132,11 +146,11 @@ const initializeTables = async () => {
 // Test database connection
 const testConnection = async () => {
   try {
-    const result = await pool.query('SELECT NOW()');
-    console.log('🔗 Database connection test successful:', result.rows[0].now);
+    const result = await pool.query("SELECT NOW()");
+    console.log("🔗 Database connection test successful:", result.rows[0].now);
     return true;
   } catch (error) {
-    console.error('❌ Database connection test failed:', error.message);
+    console.error("❌ Database connection test failed:", error.message);
     return false;
   }
 };
@@ -144,17 +158,17 @@ const testConnection = async () => {
 // Get database info
 const getDatabaseInfo = async () => {
   try {
-    const versionResult = await pool.query('SELECT version()');
+    const versionResult = await pool.query("SELECT version()");
     const extensionsResult = await pool.query(`
       SELECT extname FROM pg_extension WHERE extname IN ('uuid-ossp', 'pgcrypto')
     `);
-    
+
     return {
       version: versionResult.rows[0].version,
-      extensions: extensionsResult.rows.map(row => row.extname)
+      extensions: extensionsResult.rows.map((row) => row.extname),
     };
   } catch (error) {
-    console.error('❌ Error getting database info:', error.message);
+    console.error("❌ Error getting database info:", error.message);
     return null;
   }
 };
@@ -165,5 +179,5 @@ module.exports = {
   end: () => pool.end(),
   initializeTables,
   testConnection,
-  getDatabaseInfo
+  getDatabaseInfo,
 };

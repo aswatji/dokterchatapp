@@ -7,6 +7,7 @@ Project ini telah diupdate untuk menggunakan UUID sebagai primary key untuk meni
 ## Perbandingan Schema
 
 ### Schema Lama (v1) - Integer ID
+
 ```sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -32,6 +33,7 @@ CREATE TABLE chat_participants (
 ```
 
 ### Schema Baru (v2) - UUID
+
 ```sql
 CREATE TABLE users (
     uid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -69,17 +71,21 @@ CREATE TABLE last_messages (
 ## Cara Migrasi
 
 ### 1. Backup Database Lama
+
 ```bash
 pg_dump -h your_host -U your_user -d your_database > backup_old_schema.sql
 ```
 
 ### 2. Jalankan Schema Baru
+
 ```bash
 psql -h your_host -U your_user -d your_database -f database_schema.sql
 ```
 
 ### 3. Update Environment Variables
+
 File `.env` sudah sesuai, tidak perlu diubah:
+
 ```env
 DATABASE_URL=postgresql://postgres:36e872facb74b054@srv-captain--dokterchat:5432/postgres
 PORT=3000
@@ -89,6 +95,7 @@ NODE_ENV=development
 ## API Endpoints
 
 ### V1 Endpoints (Integer ID Schema) - Masih Berfungsi
+
 ```
 GET    /api/users                 - Get all users
 POST   /api/users                 - Create user
@@ -104,6 +111,7 @@ POST   /api/chats/:id/leave       - Leave chat
 ```
 
 ### V2 Endpoints (UUID Schema) - Baru
+
 ```
 GET    /api/users                        - Get all users (updated)
 POST   /api/users                        - Create user (updated)
@@ -126,6 +134,7 @@ GET    /api/v2/messages/recent?userId=uuid - Get recent messages
 ## Contoh Request V2
 
 ### 1. Create User
+
 ```bash
 POST /api/users
 {
@@ -147,6 +156,7 @@ Response:
 ```
 
 ### 2. Create/Get Chat
+
 ```bash
 POST /api/v2/chats
 {
@@ -168,6 +178,7 @@ Response:
 ```
 
 ### 3. Send Message
+
 ```bash
 POST /api/v2/messages
 {
@@ -203,6 +214,7 @@ Response:
 ## Testing
 
 ### Test dengan curl:
+
 ```bash
 # Test V2 API
 curl -X GET "http://localhost:3000/api/"
@@ -221,6 +233,7 @@ curl -X POST "http://localhost:3000/api/v2/chats" \
 ## Rollback Plan
 
 Jika perlu kembali ke schema lama:
+
 1. Restore dari backup: `psql -d your_database < backup_old_schema.sql`
 2. Gunakan endpoint V1 saja
 3. Comment out V2 routes di `src/routes/index.js`
